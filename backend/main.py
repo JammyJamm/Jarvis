@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from firebase_admin import credentials, firestore, initialize_app
 from apscheduler.schedulers.background import BackgroundScheduler
 import datetime
+import office.office as office
+
 app = FastAPI()
 
 origins = [
@@ -24,11 +26,18 @@ app.add_middleware(
 cred = credentials.Certificate("credentials.json")
 initialize_app(cred)
 db = firestore.client()
+#---------------------- Onload call ---------------------- #
+@app.get("/zing-summary")
+def zing_summary():
+    output = office.summarize_zing()
+    return {"summary": output}
 
+#---------------------- Ai Model ---------------------- #
 OLLAMA_URL = "http://localhost:11434/api/generate"
 
 class Prompt(BaseModel):
     prompt: str
+
 
 
 @app.post("/chat")
@@ -55,7 +64,7 @@ def get_location():
     if "error" in data:
         return {"status": "failed", "error": data["error"]}
     # Condtion check same date in firebase 
-    if check_document_exists(datetime.datetime.now().strftime("%d-%m-%Y")):
+    if check_document_exists(today_date):
          db.collection("daily_data").document(today_date).set(data, merge=True)
     else:
         db.collection("daily_data").document(today_date).set(data)
